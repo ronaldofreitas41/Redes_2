@@ -3,14 +3,17 @@ import Controller
 
 class User:
     
-    def __init__(self, username, password, homeDir):
+    def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.homedir = homeDir
+        self.homedir = "C:\Users\ronal\OneDrive\Área de Trabalho\Redes_2\DiretorioAcesso"
     
     def addUser(self):
         Controller.createUser(self.username, self.password, self.homedir)
                 
-
+    def adicionarAutorizer(user):
+        Controller.addAutorizer(user.username, user.password, user.homedir)
+        
+        
     def print_user(self):
         print(f"Name: {self.name}, Age: {self.age}")

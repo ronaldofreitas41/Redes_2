@@ -1,14 +1,27 @@
 from pyftpdlib.authorizers import DummyAuthorizer 
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import FTPServer
+import Controller as c
 
 
+def operations(op):
+    match(op):
+    
+        case 1:
+            username = input("Digite o nome do usuário: ")
+            password = input("Digite a senha do usuário: ")
+            c.addUser(username, password)
+        
+        case 2:
+        
+    
+    User.addUser()
 
 
 #definindo parametros do servidor
 authotizer = DummyAuthorizer() # Gerencia os usuarios que irão acessar o File Server
 handler = FTPHandler
-handler.authorizer = authorizer
+
 
 ipMaquina = "200.239.155.122" #IP da maquina que vai rodar o servidor
 port = 21 #Porta que o servidor vai rodar

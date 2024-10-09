@@ -8,18 +8,28 @@ db.create_tables([User])
 
 
 #Criando Objeto Usuário 
-def createUser(username, password, homeDir):
-    user = u(username=username, password=password, homeDir=homeDir)
+def createUser(username, password):
+    user = u(username, password)
     user.addUser()
 
-def 
+#Criando Usuário no banco de dados
+def createUserDB(username, password, ):
+    user = User(username=username, password=password)
+    user.save()
 
+#Buscando Usuário no banco de dados por ID
+def getUserByID(id):
+    user = User.select().where(User.id == id).get()
+    usuario  = u(username=user.username, password=user.password, homedir = user.homedir)
+    return usuario 
+
+#Buscando Usuário no banco de dados por Nome de usuário
 def getUser(username):
     user = User.select().where(User.username == username).get()
-    usuario  = u(username=user.username, password=user.password, homeDir=user.homeDir)
+    usuario  = u(username=user.username, password=user.password, homedir = user.homedir)
     return usuario
 
-
-def createUserDB(username, password, homeDir):
-    user = User(username=username, password=password, homeDir=homeDir)
-    user.save()
+#Delete Usuário no banco de dados por ID
+def deleteUser(id):
+    user = User.select().where(User.id == id).get()
+    user.delete_instance()
