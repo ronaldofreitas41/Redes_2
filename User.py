@@ -6,7 +6,7 @@ class User:
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.homedir = "C:\Users\ronal\OneDrive\Área de Trabalho\Redes_2\DiretorioAcesso"
+        self.homedir = r"C:\Redes_2\DiretorioAcesso"
         self.permission = "elradfmw"
     
     def addUser(self):
