@@ -13,8 +13,12 @@ handler.authorizer = authorizer
 ipMaquina = "192.168.2.195" #IP da maquina que vai rodar o servidor
 port = 21 #Porta que o servidor vai rodar
 
-with FTPServer((ipMaquina,port), handler) as server:
-    server.max_cons = 10 #Numero maximo de conexoes
-    server.max_cons_per_ip = 5 #Numero maximo de conexoes por IP
-    server.serve_forever() #Inicia o servidor
+try:
+    with FTPServer((ipMaquina, port), handler) as server:
+        server.max_cons = 10
+        server.max_cons_per_ip = 5
+        print(f"Servidor FTP rodando em {ipMaquina}:{port}")
+        server.serve_forever()
+except Exception as e:
+    print(f"Erro ao iniciar o servidor FTP: {e}")
 
