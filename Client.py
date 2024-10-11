@@ -3,26 +3,42 @@ from tkinter import messagebox, simpledialog, filedialog
 from ftplib import FTP, error_perm
 import socket
 from Controller import createUserDB, deleteUser, getUser, getUserByID
+import threading
 
-# Função para transferir arquivo via UDP
-def download_file_via_udp(server_address, file_name, save_path):
-    udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # Envia solicitação ao servidor para receber o arquivo
-        udp_client.sendto(file_name.encode(), server_address)
+def download_file_via_udp_threaded(server_address, file_name, save_path):
+    def download():
+        udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Envia solicitação ao servidor para receber o arquivo
+            udp_client.sendto(file_name.encode(), server_address)
 
-        with open(save_path, 'wb') as f:
-            while True:
-                data, addr = udp_client.recvfrom(1024)
-                if not data:
-                    break
-                f.write(data)
+            with open(save_path, 'wb') as f:
+                while True:
+                    data, addr = udp_client.recvfrom(1024)
+                    if not data:
+                        break
+                    f.write(data)
 
-        messagebox.showinfo("Sucesso", f"Arquivo {file_name} baixado com sucesso via UDP.")
-    except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao baixar o arquivo via UDP: {e}")
-    finally:
-        udp_client.close()
+            messagebox.showinfo("Sucesso", f"Arquivo {file_name} baixado com sucesso via UDP.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao baixar o arquivo via UDP: {e}")
+        finally:
+            udp_client.close()
+    
+    # Iniciar a operação de download em uma nova thread
+    threading.Thread(target=download).start()
+
+# Atualizar o botão de download para usar a função com threading
+def download_file(self):
+    file_name = simpledialog.askstring("Baixar Arquivo", "Digite o nome do arquivo para baixar:")
+    save_path = filedialog.asksaveasfilename(title="Salvar Arquivo", defaultextension=".txt")
+    
+    if file_name and save_path:
+        # Chama a função de download com threading
+        download_file_via_udp_threaded(self.server_address, file_name, save_path)
+    else:
+        messagebox.showwarning("Atenção", "Nome do arquivo ou caminho de salvamento não podem estar vazios.")
+
 
 class FTPClientApp:
     def __init__(self, root):
