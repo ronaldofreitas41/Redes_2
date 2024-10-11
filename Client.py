@@ -160,12 +160,13 @@ class FTPClientApp:
         
         if file_name and save_path:
             try:
-                download_file_via_udp(self.server_address, file_name, save_path)
+                # Corrigido para chamar a função com threading
+                download_file_via_udp_threaded(self.server_address, file_name, save_path)
             except Exception as e:
                 messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
         else:
             messagebox.showwarning("Atenção", "Nome do arquivo ou caminho de salvamento não podem estar vazios.")
-
+            
 # Inicializar a interface gráfica
 if __name__ == "__main__":
     root = tk.Tk()
