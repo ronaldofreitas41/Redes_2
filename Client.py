@@ -2,48 +2,8 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, filedialog
 from ftplib import FTP, error_perm
 import socket
-from Controller import createUserDB, deleteUser, getUser, getUserByID
 import threading
-
-def download_file_via_udp_threaded(server_address, file_name, save_path):
-    def download():
-        udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            # Envia solicitação ao servidor para receber o arquivo
-            print(f"Enviando solicitação para o arquivo: {file_name} para o servidor {server_address}")
-            udp_client.sendto(file_name.encode(), server_address)
-
-            with open(save_path, 'wb') as f:
-                while True:
-                    data, addr = udp_client.recvfrom(1024)
-                    if not data:
-                        print("Nenhum dado recebido, encerrando o download.")
-                        break
-                    print(f"Recebendo dados do servidor: {len(data)} bytes")
-                    f.write(data)
-
-            messagebox.showinfo("Sucesso", f"Arquivo {file_name} baixado com sucesso via UDP.")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao baixar o arquivo via UDP: {e}")
-        finally:
-            udp_client.close()
-
-    # Iniciar a operação de download em uma nova thread
-    threading.Thread(target=download).start()
-
-# Atualizar o botão de download para usar a função com threading
-def download_file(self):
-    file_name = simpledialog.askstring("Baixar Arquivo", "Digite o nome do arquivo para baixar:")
-    save_path = filedialog.asksaveasfilename(title="Salvar Arquivo", defaultextension=".txt")
-    
-    if file_name and save_path:
-        try:
-            # Chama a função de download com threading
-            download_file_via_udp_threaded(self.server_address, file_name, save_path)
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
-    else:
-        messagebox.showwarning("Atenção", "Nome do arquivo ou caminho de salvamento não podem estar vazios.")
+from Controller import createUserDB, deleteUser, getUser, getUserByID
 
 class FTPClientApp:
     def __init__(self, root):
@@ -78,8 +38,16 @@ class FTPClientApp:
         self.btn_list_files = tk.Button(root, text="Listar Arquivos no Servidor", command=self.list_files, state=tk.DISABLED)
         self.btn_list_files.grid(row=7, column=0, padx=5, pady=5)
         
-        self.btn_download_file = tk.Button(root, text="Baixar Arquivo via UDP", command=self.download_file, state=tk.DISABLED)
-        self.btn_download_file.grid(row=8, column=0, padx=5, pady=5)
+        # Lista de arquivos do servidor
+        self.lbl_files = tk.Label(root, text="Arquivos no Servidor:")
+        self.lbl_files.grid(row=8, column=0, padx=5, pady=5)
+
+        self.lst_files = tk.Listbox(root, height=10, width=50)
+        self.lst_files.grid(row=9, column=0, padx=5, pady=5)
+
+        # Botão de download
+        self.btn_download_file = tk.Button(root, text="Baixar Arquivo via UDP pelo Id de arquivo", command=self.download_selected_file, state=tk.DISABLED)
+        self.btn_download_file.grid(row=10, column=0, padx=5, pady=5)
 
     # Métodos de gerenciamento de usuários
     def add_user(self):
@@ -154,24 +122,34 @@ class FTPClientApp:
     def list_files(self):
         try:
             files = self.ftp.nlst()
-            files_list = "\n".join(files)
-            messagebox.showinfo("Arquivos no Servidor", f"Arquivos disponíveis:\n{files_list}")
+            self.lst_files.delete(0, tk.END)
+            for file in files:
+                self.lst_files.insert(tk.END, file)
+            messagebox.showinfo("Sucesso", "Lista de arquivos atualizada.")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao listar os arquivos: {e}")
     
-    def download_file(self):
-        file_name = simpledialog.askstring("Baixar Arquivo", "Digite o nome do arquivo para baixar:")
-        save_path = filedialog.asksaveasfilename(title="Salvar Arquivo", defaultextension=".txt")
+    def download_selected_file(self):
+        save_path = filedialog.asksaveasfilename(defaultextension=".txt", title="Salvar Arquivo")
+        print("Caminho de salvamento:", save_path)
         
-        if file_name and save_path:
-            try:
-                # Chama a função de download com threading
-                download_file_via_udp_threaded(self.server_address, file_name, save_path)
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
+        nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
+        
+        nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
+        
+        if save_path:
+            if nomeArq:
+                with open(save_path, 'wb') as f:
+                    try:
+                        ftp.retrbinary('RETR ' + nomeArq, f.write)
+                    except ftplib.error_perm as e:
+                        messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
+            else:
+                messagebox.showerror("Erro", "Nome do arquivo não pode estar vazio.")
         else:
-            messagebox.showwarning("Atenção", "Nome do arquivo ou caminho de salvamento não podem estar vazios.")
-            
+            messagebox.showerror("Erro", "Caminho de salvamento não definido.")
+        
+        
 # Inicializar a interface gráfica
 if __name__ == "__main__":
     root = tk.Tk()
