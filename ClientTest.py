@@ -1,32 +1,17 @@
-import ftplib
-from tkinter import filedialog, messagebox, simpledialog
-from ftplib import FTP
+import socket
 
-ftp = FTP('192.168.2.113')
-ftp.login('ronaldo', '12345')
+def download_file(host='127.0.0.1', port=65432, filename='Teste.txt'):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect((host, port))
+        client_socket.sendall(filename.encode())
 
-# Listar arquivos no diretório atual
-files = ftp.nlst()
-print("Arquivos disponíveis:", files)
+        with open(f'downloaded_{filename}', 'wb') as file:
+            while True:
+                data = client_socket.recv(1024)
+                if not data:
+                    break
+                file.write(data)
+        print(f"Arquivo {filename} baixado com sucesso.")
 
-
-save_path = filedialog.asksaveasfilename(defaultextension=".txt", title="Salvar Arquivo")
-print("Caminho de salvamento:", save_path)
-
-nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
-
-nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
-
-if save_path:
-    if nomeArq:
-        with open(save_path, 'wb') as f:
-            try:
-                ftp.retrbinary('RETR ' + nomeArq, f.write)
-            except ftplib.error_perm as e:
-                messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
-    else:
-        messagebox.showerror("Erro", "Nome do arquivo não pode estar vazio.")
-else:
-    messagebox.showerror("Erro", "Caminho de salvamento não definido.")
-# Desconectar
-ftp.quit()
+if __name__ == "__main__":
+    download_file(filename='Teste.txt')  # Altere para o arquivo desejado

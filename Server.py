@@ -10,7 +10,7 @@ authorizer.add_user("ronaldo", "12345", r"D:\Facul\Redes_2\DiretorioAcesso", per
 handler.authorizer = authorizer
 
 
-ipMaquina = "26.4.116.9" #IP da maquina que vai rodar o servidor
+ipMaquina = "192.168.2.113" #IP da maquina que vai rodar o servidor
 port = 21 #Porta que o servidor vai rodar
 
 try:

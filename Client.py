@@ -1,8 +1,11 @@
+import ftplib
 import tkinter as tk
 from tkinter import messagebox, simpledialog, filedialog
 from ftplib import FTP, error_perm
 import socket
 import threading
+
+from numpy import ptp
 from Controller import createUserDB, deleteUser, getUser, getUserByID
 
 class FTPClientApp:
@@ -128,27 +131,23 @@ class FTPClientApp:
             messagebox.showinfo("Sucesso", "Lista de arquivos atualizada.")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao listar os arquivos: {e}")
-    
+
     def download_selected_file(self):
+        nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
         save_path = filedialog.asksaveasfilename(defaultextension=".txt", title="Salvar Arquivo")
-        print("Caminho de salvamento:", save_path)
-        
-        nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
-        
-        nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
-        
+        print("Caminho de salvamento:", save_path)# Substitua pelo caminho correto
+
         if save_path:
             if nomeArq:
-                with open(save_path, 'wb') as f:
-                    try:
-                        ftp.retrbinary('RETR ' + nomeArq, f.write)
-                    except ftplib.error_perm as e:
-                        messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
+                try:
+                    with open(save_path, 'wb') as f:
+                        self.ftp.retrbinary('RETR ' + nomeArq, f.write)
+                except ftplib.error_perm as e:
+                    messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
             else:
                 messagebox.showerror("Erro", "Nome do arquivo não pode estar vazio.")
         else:
             messagebox.showerror("Erro", "Caminho de salvamento não definido.")
-        
         
 # Inicializar a interface gráfica
 if __name__ == "__main__":
