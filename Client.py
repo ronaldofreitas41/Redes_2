@@ -10,13 +10,16 @@ def download_file_via_udp_threaded(server_address, file_name, save_path):
         udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             # Envia solicitação ao servidor para receber o arquivo
+            print(f"Enviando solicitação para o arquivo: {file_name} para o servidor {server_address}")
             udp_client.sendto(file_name.encode(), server_address)
 
             with open(save_path, 'wb') as f:
                 while True:
                     data, addr = udp_client.recvfrom(1024)
                     if not data:
+                        print("Nenhum dado recebido, encerrando o download.")
                         break
+                    print(f"Recebendo dados do servidor: {len(data)} bytes")
                     f.write(data)
 
             messagebox.showinfo("Sucesso", f"Arquivo {file_name} baixado com sucesso via UDP.")
@@ -24,7 +27,7 @@ def download_file_via_udp_threaded(server_address, file_name, save_path):
             messagebox.showerror("Erro", f"Erro ao baixar o arquivo via UDP: {e}")
         finally:
             udp_client.close()
-    
+
     # Iniciar a operação de download em uma nova thread
     threading.Thread(target=download).start()
 
@@ -34,11 +37,13 @@ def download_file(self):
     save_path = filedialog.asksaveasfilename(title="Salvar Arquivo", defaultextension=".txt")
     
     if file_name and save_path:
-        # Chama a função de download com threading
-        download_file_via_udp_threaded(self.server_address, file_name, save_path)
+        try:
+            # Chama a função de download com threading
+            download_file_via_udp_threaded(self.server_address, file_name, save_path)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
     else:
         messagebox.showwarning("Atenção", "Nome do arquivo ou caminho de salvamento não podem estar vazios.")
-
 
 class FTPClientApp:
     def __init__(self, root):
@@ -160,7 +165,7 @@ class FTPClientApp:
         
         if file_name and save_path:
             try:
-                # Corrigido para chamar a função com threading
+                # Chama a função de download com threading
                 download_file_via_udp_threaded(self.server_address, file_name, save_path)
             except Exception as e:
                 messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
