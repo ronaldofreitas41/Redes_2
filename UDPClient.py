@@ -1,16 +1,18 @@
+import ftplib
 import tkinter as tk
 from tkinter import messagebox, simpledialog, filedialog
+from ftplib import FTP, error_perm
 import socket
-import struct
-import hashlib
+import threading
 
-SERVER_IP = "127.0.0.1"  
-SERVER_PORT = 65432   
+from numpy import ptp
+from Controller import createUserDB, deleteUser, getUser, getUserByID
 
-class UDPClientApp:
+class FTPClientApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Gerenciador de Usuários e Cliente UDP")
+        self.root.title("Gerenciador de Usuários e Cliente FTP com Download via UDP")
+        self.ftp = None
         self.server_address = None
         
         # Sessão de gerenciamento de usuários
@@ -19,102 +21,38 @@ class UDPClientApp:
 
         self.btn_add_user = tk.Button(root, text="Adicionar Usuário", command=self.add_user)
         self.btn_add_user.grid(row=1, column=0, padx=5, pady=5)
-
+        
         self.btn_delete_user = tk.Button(root, text="Excluir Usuário", command=self.delete_user)
         self.btn_delete_user.grid(row=2, column=0, padx=5, pady=5)
-
+        
         self.btn_get_user = tk.Button(root, text="Buscar Usuário", command=self.get_user)
         self.btn_get_user.grid(row=3, column=0, padx=5, pady=5)
-
+        
         self.btn_get_user_by_id = tk.Button(root, text="Buscar Usuário por ID", command=self.get_user_by_id)
         self.btn_get_user_by_id.grid(row=4, column=0, padx=5, pady=5)
 
-        # Sessão de operações UDP
-        self.lbl_udp_section = tk.Label(root, text="Operações UDP", font=("Arial", 12, "bold"))
-        self.lbl_udp_section.grid(row=5, column=0, columnspan=2, pady=10)
+        # Sessão de operações FTP
+        self.lbl_ftp_section = tk.Label(root, text="Operações FTP", font=("Arial", 12, "bold"))
+        self.lbl_ftp_section.grid(row=5, column=0, columnspan=2, pady=10)
 
-        self.btn_connect = tk.Button(root, text="Conectar ao Servidor UDP", command=self.connect_to_udp)
+        self.btn_connect = tk.Button(root, text="Conectar ao Servidor FTP", command=self.connect_to_ftp)
         self.btn_connect.grid(row=6, column=0, padx=5, pady=5)
-
-        self.btn_list_files = tk.Button(root, text="Listar Arquivos Disponíveis", command=self.list_files, state=tk.DISABLED)
-        self.btn_list_files.grid(row=7, column=0, padx=5, pady=5)
-
-        self.btn_download_file = tk.Button(root, text="Baixar Arquivo via UDP", command=self.download_file, state=tk.DISABLED)
-        self.btn_download_file.grid(row=8, column=0, padx=5, pady=5)
-
-    def connect_to_udp(self):
-        SERVER_IP = simpledialog.askstring("Conectar ao UDP", "Digite o IP do servidor UDP:",initialvalue= "192.168.")
-        SERVER_PORT = simpledialog.askinteger("Conectar ao UDP", "Digite a porta do servidor UDP:", initialvalue=2000)
         
-        self.server_address = (SERVER_IP, SERVER_PORT)
-        messagebox.showinfo("Conexão", f"Conectado ao servidor UDP {SERVER_IP}:{SERVER_PORT}")
-        self.btn_list_files.config(state=tk.NORMAL)
-        self.btn_download_file.config(state=tk.NORMAL)
+        self.btn_list_files = tk.Button(root, text="Listar Arquivos no Servidor", command=self.list_files, state=tk.DISABLED)
+        self.btn_list_files.grid(row=7, column=0, padx=5, pady=5)
+        
+        # Lista de arquivos do servidor
+        self.lbl_files = tk.Label(root, text="Arquivos no Servidor:")
+        self.lbl_files.grid(row=8, column=0, padx=5, pady=5)
 
-    def authenticate_user(self):
-        username = simpledialog.askstring("Usuário", "Digite seu nome de usuário:")
-        password = simpledialog.askstring("Senha", "Digite sua senha:", show='*')
+        self.lst_files = tk.Listbox(root, height=10, width=50)
+        self.lst_files.grid(row=9, column=0, padx=5, pady=5)
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(f"AUTH|{username}|{password}".encode('utf-8'), self.server_address)
-        print(f"Enviando autenticação: AUTH|{username}|{password}")
+        # Botão de download
+        self.btn_download_file = tk.Button(root, text="Baixar Arquivo via UDP pelo Id de arquivo", command=self.download_selected_file, state=tk.DISABLED)
+        self.btn_download_file.grid(row=10, column=0, padx=5, pady=5)
 
-        # Espera pela resposta do servidor
-        try:
-            sock.settimeout(2)
-            response, _ = sock.recvfrom(1024)
-            print(f"Resposta recebida: {response.decode('utf-8')}")
-            if response.decode('utf-8') == "AUTH_OK":
-                print("Autenticação bem-sucedida!")
-                return True
-            else:
-                print("Falha na autenticação.")
-                return False
-        except socket.timeout:
-            print("Timeout ao tentar autenticar.")
-            return False
-
-    def list_files(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto("LIST_FILES".encode('utf-8'), self.server_address)
-
-        try:
-            sock.settimeout(2)
-            files_response, _ = sock.recvfrom(1024)
-            files = files_response.decode('utf-8').splitlines()
-            files_list = "\n".join(files)
-            messagebox.showinfo("Arquivos Disponíveis", files_list)
-        except socket.timeout:
-            messagebox.showerror("Erro", "Timeout ao tentar listar os arquivos.")
-
-    def download_file(self):
-        filename = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
-        if filename:
-            print(f"Baixando arquivo {filename}...")
-            print("Server IP: ", SERVER_IP)
-            print("Server PORT: ", SERVER_PORT)
-            self._download_file(SERVER_IP, SERVER_PORT, filename)
-
-    def _download_file(self, host, port, filename):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-            print("Conectando ao servidor...")
-            print("Host: ", host)
-            print("Port: ", port)
-            client_socket.connect((host, port))
-            client_socket.sendall(filename.encode())
-
-            with open(f'downloaded_{filename}', 'wb') as file:
-                while True:
-                    data = client_socket.recv(1024)
-                    if not data:
-                        break
-                    file.write(data)
-            print(f"Arquivo {filename} baixado com sucesso.")
-
-    def calculate_checksum(self, data):
-        return hashlib.md5(data).hexdigest()
-
-    # Métodos de gerenciamento de usuários (sem alterações)
+    # Métodos de gerenciamento de usuários
     def add_user(self):
         username = simpledialog.askstring("Adicionar Usuário", "Digite o nome do usuário:")
         password = simpledialog.askstring("Adicionar Usuário", "Digite a senha do usuário:", show='*')
@@ -164,8 +102,55 @@ class UDPClientApp:
         else:
             messagebox.showwarning("Atenção", "O ID do usuário não pode estar vazio.")
 
+    # Métodos de operações FTP
+    def connect_to_ftp(self):
+        server_ip = simpledialog.askstring("Conectar ao FTP", "Digite o IP do servidor FTP:",initialvalue="192.168.")
+        server_port = simpledialog.askinteger("Conectar ao FTP", "Digite a porta do servidor FTP:", initialvalue=21)
+        username = simpledialog.askstring("Conectar ao FTP", "Digite o nome do usuário:")
+        password = simpledialog.askstring("Conectar ao FTP", "Digite a senha:", show='*')
+        
+        try:
+            self.ftp = FTP()
+            self.ftp.connect(server_ip, server_port)
+            self.ftp.login(username, password)
+            self.server_address = (server_ip, server_port)
+            messagebox.showinfo("Sucesso", f"Conectado ao servidor FTP {server_ip}:{server_port}")
+            self.btn_list_files.config(state=tk.NORMAL)
+            self.btn_download_file.config(state=tk.NORMAL)
+        except error_perm as e:
+            messagebox.showerror("Erro", f"Erro na autenticação: {e}")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao conectar ao servidor FTP: {e}")
+    
+    def list_files(self):
+        try:
+            files = self.ftp.nlst()
+            self.lst_files.delete(0, tk.END)
+            for file in files:
+                self.lst_files.insert(tk.END, file)
+            messagebox.showinfo("Sucesso", "Lista de arquivos atualizada.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao listar os arquivos: {e}")
+
+    def download_selected_file(self):
+        nomeArq = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
+        save_path = filedialog.asksaveasfilename(defaultextension=".txt", title="Salvar Arquivo")
+        print("Caminho de salvamento:", save_path)# Substitua pelo caminho correto
+
+        if save_path:
+            if nomeArq:
+                try:
+                    with open(save_path, 'wb') as f:
+                        self.ftp.retrbinary('RETR ' + nomeArq, f.write)
+                except ftplib.error_perm as e:
+                    messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
+            else:
+                messagebox.showerror("Erro", "Nome do arquivo não pode estar vazio.")
+        else:
+            messagebox.showerror("Erro", "Caminho de salvamento não definido.")
+        
 # Inicializar a interface gráfica
 if __name__ == "__main__":
     root = tk.Tk()
-    app = UDPClientApp(root)
+    app = FTPClientApp(root)
     root.mainloop()

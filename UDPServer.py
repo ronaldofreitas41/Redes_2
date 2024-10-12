@@ -1,42 +1,24 @@
-import socket
-import os
+from pyftpdlib.authorizers import DummyAuthorizer 
+from pyftpdlib.handlers import FTPHandler
+from pyftpdlib.servers import FTPServer
 
-# Configurações do servidor
-HOST = '127.0.0.1'  # Endereço IP do servidor
-PORT = 65432        # Porta do servidor
 
-def handle_client(client_socket):
-    try:
-        # Recebe o nome do arquivo do cliente
-        filename = client_socket.recv(1024).decode()
-        file_path = os.path.join(r"C:\Redes_2\DiretorioAcesso", filename)
+#definindo parametros do servidor
+authorizer = DummyAuthorizer()  # Gerencia os usuarios que irão acessar o File Server
+handler = FTPHandler
+authorizer.add_user("ronaldo", "12345", r"C:\Redes_2\DiretorioAcesso", perm="elradfmw") #Adicionando usuario padrão ao File Server
+handler.authorizer = authorizer
 
-        if os.path.exists(file_path):
-            with open(file_path, 'rb') as file:
-                while True:
-                    data = file.read(1024)
-                    if not data:
-                        break
-                    client_socket.sendall(data)
-            print(f"Arquivo {filename} enviado com sucesso.")
-        else:
-            client_socket.sendall(b"ERRO: Arquivo nao encontrado.")
-            print(f"Arquivo {filename} não encontrado.")
-    except Exception as e:
-        print(f"Erro ao lidar com o cliente: {e}")
-    finally:
-        client_socket.close()
 
-def start_server():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.bind((HOST, PORT))
-        server_socket.listen()
-        print(f"Servidor TCP rodando em {HOST}:{PORT}")
+ipMaquina = "192.168.2.195" #IP da maquina que vai rodar o servidor
+port = 21 #Porta que o servidor vai rodar
 
-        while True:
-            client_socket, addr = server_socket.accept()
-            print(f"Conexão estabelecida com {addr}")
-            handle_client(client_socket)
+try:
+    with FTPServer((ipMaquina, port), handler) as server:
+        server.max_cons = 10
+        server.max_cons_per_ip = 5
+        print(f"Servidor FTP rodando em {ipMaquina}:{port}")
+        server.serve_forever()
+except Exception as e:
+    print(f"Erro ao iniciar o servidor FTP: {e}")
 
-if __name__ == "__main__":
-    start_server()
