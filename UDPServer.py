@@ -3,13 +3,13 @@ import os
 
 # Configurações do servidor
 HOST = '127.0.0.1'  # Endereço IP do servidor
-PORT = 65432       # Porta do servidor
+PORT = 65432        # Porta do servidor
 
 def handle_client(client_socket):
     try:
         # Recebe o nome do arquivo do cliente
         filename = client_socket.recv(1024).decode()
-        file_path = os.path.join("D:/Facul/Redes_2/DiretorioAcesso", filename)
+        file_path = os.path.join(r"C:\Redes_2\DiretorioAcesso", filename)
 
         if os.path.exists(file_path):
             with open(file_path, 'rb') as file:

@@ -4,6 +4,9 @@ import socket
 import struct
 import hashlib
 
+SERVER_IP = "127.0.0.1"  
+SERVER_PORT = 65432   
+
 class UDPClientApp:
     def __init__(self, root):
         self.root = root
@@ -40,11 +43,11 @@ class UDPClientApp:
         self.btn_download_file.grid(row=8, column=0, padx=5, pady=5)
 
     def connect_to_udp(self):
-        server_ip = simpledialog.askstring("Conectar ao UDP", "Digite o IP do servidor UDP:")
-        server_port = simpledialog.askinteger("Conectar ao UDP", "Digite a porta do servidor UDP:", initialvalue=2000)
+        SERVER_IP = simpledialog.askstring("Conectar ao UDP", "Digite o IP do servidor UDP:",initialvalue= "192.168.")
+        SERVER_PORT = simpledialog.askinteger("Conectar ao UDP", "Digite a porta do servidor UDP:", initialvalue=2000)
         
-        self.server_address = (server_ip, server_port)
-        messagebox.showinfo("Conexão", f"Conectado ao servidor UDP {server_ip}:{server_port}")
+        self.server_address = (SERVER_IP, SERVER_PORT)
+        messagebox.showinfo("Conexão", f"Conectado ao servidor UDP {SERVER_IP}:{SERVER_PORT}")
         self.btn_list_files.config(state=tk.NORMAL)
         self.btn_download_file.config(state=tk.NORMAL)
 
@@ -87,66 +90,26 @@ class UDPClientApp:
     def download_file(self):
         filename = simpledialog.askstring("Nome do Arquivo", "Informe o nome do arquivo a ser baixado:")
         if filename:
-            if self.authenticate_user():  # Tenta autenticar antes de baixar
-                self.request_file(filename)
-            else:
-                messagebox.showwarning("Atenção", "Autenticação falhou. Não é possível solicitar o arquivo.")
-        else:
-            messagebox.showwarning("Atenção", "Nome do arquivo não pode estar vazio.")
+            print(f"Baixando arquivo {filename}...")
+            print("Server IP: ", SERVER_IP)
+            print("Server PORT: ", SERVER_PORT)
+            self._download_file(SERVER_IP, SERVER_PORT, filename)
 
-    def request_file(self, filename):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(f"FILE_REQUEST|{filename}".encode('utf-8'), self.server_address)
+    def _download_file(self, host, port, filename):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+            print("Conectando ao servidor...")
+            print("Host: ", host)
+            print("Port: ", port)
+            client_socket.connect((host, port))
+            client_socket.sendall(filename.encode())
 
-        # Solicita ao usuário o caminho onde salvar o arquivo
-        save_path = filedialog.asksaveasfilename(defaultextension=".txt", title="Salvar Arquivo", initialfile=filename)
-
-        if not save_path:
-            messagebox.showwarning("Atenção", "Caminho de salvamento não definido.")
-            return
-        
-        with open(save_path, "wb") as f:
-            packet_number = 0
-
-            while True:
-                try:
-                    sock.settimeout(2)
-                    packet, _ = sock.recvfrom(1500)  # Receber pacote completo
-                    
-                    # Verifique se o pacote recebido tem o tamanho correto
-                    if len(packet) < 36:
-                        # Verifica se o pacote é uma mensagem de erro
-                        if packet.decode('utf-8').startswith("ERRO"):
-                            print(packet.decode('utf-8'))
-                            break
-                        print("Pacote recebido é menor que 36 bytes. Ignorando.")
-                        continue
-
-                    # Extrair número do pacote e dados
-                    header = struct.unpack("i32s", packet[:36])
-                    received_packet_number, received_checksum = header
-                    data = packet[36:]
-
-                    # Verifica se é o último pacote
-                    if data == b"END":
-                        print("Recebido fim da transmissão.")
+            with open(f'downloaded_{filename}', 'wb') as file:
+                while True:
+                    data = client_socket.recv(1024)
+                    if not data:
                         break
-
-                    # Verifica o número do pacote
-                    if received_packet_number == packet_number:
-                        # Verifica checksum
-                        if self.calculate_checksum(data).encode('utf-8') == received_checksum:
-                            f.write(data)
-                            print(f"Pacote {received_packet_number} recebido corretamente.")
-                            # Envia ACK
-                            sock.sendto(struct.pack("i", packet_number), self.server_address)
-                            packet_number += 1
-                        else:
-                            print(f"Checksum falhou para o pacote {received_packet_number}. Retransmitindo.")
-                    else:
-                        print(f"Número do pacote inesperado {received_packet_number}. Ignorando.")
-                except socket.timeout:
-                    print("Timeout! Nenhum pacote recebido.")
+                    file.write(data)
+            print(f"Arquivo {filename} baixado com sucesso.")
 
     def calculate_checksum(self, data):
         return hashlib.md5(data).hexdigest()
